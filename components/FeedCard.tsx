@@ -6,7 +6,7 @@ import { FiUpload } from "react-icons/fi";
 
 export default function FeedCard() {
   return (
-    <div className="border border-gray-400 p-4 border-x-0 border-b-0 transition-all cursor-pointer">
+    <div className="border border-gray-700 p-4 border-x-0 border-b-0 transition-all cursor-pointer">
       <div className="grid grid-cols-12">
         <div className="col-span-1">
           <div className="w-[50px] h-[50px] rounded-full overflow-hidden">
@@ -18,7 +18,7 @@ export default function FeedCard() {
             />
           </div>
         </div>
-        <div className="col-span-11 pl-2">
+        <div className="col-span-11 pl-4.5">
           <h2 className="text-base font-semibold">Harshul Patel</h2>
           <p className="text-sm">
             #Hyderabad : #RoadSafety A #Speeding Septic Tanker lost control and
