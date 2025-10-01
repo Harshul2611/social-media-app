@@ -3,31 +3,34 @@ import { BiMessageRounded } from "react-icons/bi";
 import { FaRetweet } from "react-icons/fa6";
 import { FaRegHeart } from "react-icons/fa";
 import { FiUpload } from "react-icons/fi";
+import { Tweet } from "@/gql/graphql";
 
-export default function FeedCard() {
+interface FeedCardProps {
+  data: Tweet;
+}
+
+export default function FeedCard(props: FeedCardProps) {
+  const { data } = props;
   return (
     <div className="border border-gray-700 p-4 border-x-0 border-b-0 transition-all cursor-pointer">
       <div className="grid grid-cols-12">
         <div className="col-span-1">
-          <div className="w-[50px] h-[50px] rounded-full overflow-hidden">
-            <Image
-              src={`https://img.freepik.com/free-vector/smiling-young-man-illustration_1308-174669.jpg`}
-              alt="profile"
-              width={50}
-              height={50}
-            />
+          <div className="w-[40px] h-[40px] rounded-full overflow-hidden">
+            {data.author.profileImageURL && (
+              <Image
+                src={data?.author?.profileImageURL}
+                alt="profile"
+                width={50}
+                height={50}
+              />
+            )}
           </div>
         </div>
         <div className="col-span-11 pl-4.5">
-          <h2 className="text-base font-semibold">Harshul Patel</h2>
-          <p className="text-sm">
-            #Hyderabad : #RoadSafety A #Speeding Septic Tanker lost control and
-            overturned, after crashing into the compound wall of Sri
-            Abhayanjaneya Swamy temple, in the middle of the road near NGRI,
-            #Uppal, a man doing exercise near the temple was a lucky escape,
-            daughter in #CCTV The driver-cum-owner Kumar Naik was seriously
-            injured & shifted to Gandhi Hospital.
-          </p>
+          <h2 className="text-base font-semibold">
+            {data?.author?.firstName} {data?.author?.lastName}
+          </h2>
+          <p className="text-sm">{data?.content}</p>
           <div className="flex items-center justify-between text-lg pr-20 mt-3">
             <div className="hover:text-[#1C9BF0]">
               <BiMessageRounded />

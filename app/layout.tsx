@@ -1,5 +1,7 @@
+// app/layout.tsx
 import type { Metadata } from "next";
 import "./globals.css";
+import Providers from "./providers";
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -13,7 +15,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="bg-black text-white">{children}</body>
+      <body className="bg-black text-white">
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }
