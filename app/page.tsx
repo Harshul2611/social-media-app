@@ -2,206 +2,125 @@
 
 import FeedCard from "@/components/FeedCard";
 import React, { useCallback, useState } from "react";
-import { GiBoltShield } from "react-icons/gi";
-import { FiHome } from "react-icons/fi";
-import { FaSearch } from "react-icons/fa";
-import { RiNotification4Line } from "react-icons/ri";
-import { MdOutlineMailOutline, MdOutlineVerifiedUser } from "react-icons/md";
-import { PiBookmarkSimpleBold } from "react-icons/pi";
-import { IoPersonOutline } from "react-icons/io5";
-import { CgMoreO } from "react-icons/cg";
-import { CredentialResponse, GoogleLogin } from "@react-oauth/google";
-import toast from "react-hot-toast";
-import { graphQLClient } from "@/clients/api";
-import { verifyUserGoogleTokenQuery } from "@/graphql/query/user";
 import { useCurrentUser } from "@/hooks/user";
-import { useQueryClient } from "@tanstack/react-query";
 import Image from "next/image";
 import { BiImageAlt } from "react-icons/bi";
 import { useCreateTweet, useGetAllTweets } from "@/hooks/tweet";
 import { Tweet } from "@/gql/graphql";
-
-interface Sidebar {
-  title: String;
-  icon: React.ReactNode;
-}
-
-const manageSideBar: Sidebar[] = [
-  {
-    title: "Home",
-    icon: <FiHome />,
-  },
-  {
-    title: "Explore",
-    icon: <FaSearch />,
-  },
-  {
-    title: "Notifications",
-    icon: <RiNotification4Line />,
-  },
-  {
-    title: "Messages",
-    icon: <MdOutlineMailOutline />,
-  },
-  {
-    title: "Bookmarks",
-    icon: <PiBookmarkSimpleBold />,
-  },
-  {
-    title: "VerfiedTag",
-    icon: <MdOutlineVerifiedUser />,
-  },
-  {
-    title: "Profile",
-    icon: <IoPersonOutline />,
-  },
-  {
-    title: "More",
-    icon: <CgMoreO />,
-  },
-];
+import TwitterLayout from "@/components/Layout/TwitterLayout";
+import { graphQLClient } from "@/clients/api";
+import { getImageURLQuery } from "@/graphql/query/tweet";
+import axios from "axios";
+import toast from "react-hot-toast";
 
 export default function Home() {
-  const { user, isLoading } = useCurrentUser();
+  const { users, isLoading } = useCurrentUser();
   const { tweets, loading } = useGetAllTweets();
   const { mutate } = useCreateTweet();
-  const queryClient = useQueryClient();
+  const [imageUrl, setImageUrl] = useState<string>("");
   const [content, setContent] = useState<string>("");
+
+  const handleInputFunction = useCallback((input: HTMLInputElement) => {
+    return async (e: Event) => {
+      e.preventDefault();
+      const file: File | null | undefined = input.files?.item(0);
+      if (!file) return;
+
+      const { getSignedUrlForTweet } = await graphQLClient.request(
+        getImageURLQuery,
+        {
+          imageName: file.name,
+          imageType: file.type,
+        }
+      );
+
+      if (getSignedUrlForTweet) {
+        const toastId = toast.loading("Uploading...");
+        await axios.put(getSignedUrlForTweet, file, {
+          headers: {
+            "Content-Type": file.type,
+          },
+        });
+        toast.success("Image Uploaded", { id: toastId });
+        const url = new URL(getSignedUrlForTweet);
+        const filePath = `${url.origin}${url.pathname}`;
+        setImageUrl(filePath);
+      }
+    };
+  }, []);
 
   const handleSelectImage = useCallback(() => {
     const input = document.createElement("input");
     input.setAttribute("type", "file");
     input.setAttribute("accept", "image/*");
+
+    const handleInputFunc = handleInputFunction(input);
+
+    input.addEventListener("change", handleInputFunc);
     input.click();
-  }, []);
+  }, [handleInputFunction]);
 
   const handleCreateTweet = useCallback(() => {
-    mutate({ content });
-  }, [content, mutate]);
+    mutate({ content, imageUrl });
+    setContent("");
+    setImageUrl("");
+  }, [content, imageUrl, mutate]);
 
-  const handleLoginWithGoogle = useCallback(
-    async (cred: CredentialResponse) => {
-      const googleToken = cred.credential;
-      if (!googleToken) {
-        return toast.error("Google token not found ");
-      }
-
-      const { verifyGoogleToken } = await graphQLClient.request(
-        verifyUserGoogleTokenQuery,
-        { token: googleToken }
-      );
-      toast.success("Verified Success ");
-      console.log(verifyGoogleToken);
-
-      if (verifyGoogleToken) {
-        window.localStorage.setItem("token", verifyGoogleToken);
-      }
-
-      await queryClient.invalidateQueries({ queryKey: ["current-user"] });
-    },
-    []
-  );
   return (
     <div>
-      <div className="h-screen w-screen grid grid-cols-24 px-26">
-        <div className="col-span-6 p-2 relative">
-          <div className="text-4xl hover:bg-zinc-800 transition-all w-fit h-fit rounded-full p-2 cursor-pointer">
-            <GiBoltShield />
-          </div>
-          <div className="mt-3">
-            <ul className="space-y-2">
-              {manageSideBar.map((item, index) => (
-                <li
-                  key={index}
-                  className="flex items-center gap-x-3 hover:bg-zinc-900 transition-all px-4 py-2 w-fit h-fit rounded-full cursor-pointer"
-                >
-                  <span className="text-2xl text-gray-200">{item.icon}</span>
-                  <span className="text-xl text-gray-200 font-medium tracking-wider">
-                    {item.title}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="mt-4 mr-12">
-            <button className="text-white transition-all cursor-pointer hover:bg-[#0e81ce] font-semibold text-base tracking-wider bg-[#1C9BF0] px-4 py-2.5 w-full rounded-full">
-              Post
-            </button>
-          </div>
-          <div className="absolute bottom-5 flex items-center hover:bg-zinc-900 px-5 py-2 rounded-full">
-            {user && user?.profileImageURL && (
-              <Image
-                className="rounded-full"
-                src={user?.profileImageURL}
-                alt="profile"
-                height={40}
-                width={40}
-              />
-            )}
-            <div className="ml-2">
-              <h2 className="font-semibold text-base">
-                {user?.firstName} {user?.lastName}
-              </h2>
-              <p className="text-sm">{user?.email}</p>
-            </div>
-          </div>
-        </div>
-        <div className="col-span-10 border-x-[0.6px] overflow-y-auto border-gray-700">
-          <div>
-            <div className="border border-gray-700 p-4 border-x-0 border-b-0 transition-all cursor-pointer">
-              <div className="grid grid-cols-12">
-                <div className="col-span-1">
-                  {user?.profileImageURL && (
-                    <Image
-                      src={user?.profileImageURL}
-                      alt="profile"
-                      className="rounded-full"
-                      width={50}
-                      height={50}
+      <TwitterLayout>
+        <div>
+          <div className="border border-gray-700 p-2 md:p-4 border-x-0 border-b-0 transition-all cursor-pointer">
+            <div className="grid grid-cols-12">
+              <div className="col-span-1">
+                {users?.profileImageURL && (
+                  <Image
+                    src={users?.profileImageURL}
+                    alt="profile"
+                    className="rounded-full w-[30px] h-[30px] md:w-[40px] md:h-[40px]"
+                    width={50}
+                    height={50}
+                  />
+                )}
+              </div>
+              <div className="col-span-11">
+                <textarea
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  rows={3}
+                  className="w-full bg-transparent text-white outline-none text-sm sm:text-base md:text-lg px-3 border-b border-slate-700"
+                  placeholder="what's happening"
+                ></textarea>
+                {imageUrl && (
+                  <Image
+                    src={imageUrl}
+                    alt="post-image"
+                    width={300}
+                    height={300}
+                  />
+                )}
+                <div className="mt-0.5 sm:mt-1 md:mt-2 flex items-center justify-between">
+                  <div className="hover:bg-gray-800 rounded-full px-2 py-2 focus:bg-gray-900">
+                    <BiImageAlt
+                      onClick={handleSelectImage}
+                      className="text-lg md:text-xl"
                     />
-                  )}
-                </div>
-                <div className="col-span-11">
-                  <textarea
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    rows={3}
-                    className="w-full bg-transparent text-white outline-none text-lg px-3 border-b border-slate-700"
-                    placeholder="what's happening"
-                  ></textarea>
-                  <div className="mt-2 flex items-center justify-between">
-                    <div className="hover:bg-gray-800 rounded-full px-2 py-2 focus:bg-gray-900">
-                      <BiImageAlt
-                        onClick={handleSelectImage}
-                        className="text-xl"
-                      />
-                    </div>
-                    <button
-                      onClick={handleCreateTweet}
-                      className="text-white transition-all cursor-pointer hover:bg-[#0e81ce] font-semibold text-base tracking-wider bg-[#1C9BF0] px-4 py-1 rounded-full"
-                    >
-                      Post
-                    </button>
                   </div>
+                  <button
+                    onClick={handleCreateTweet}
+                    className="text-white transition-all mr-4 md:mr-0 cursor-pointer hover:bg-[#0e81ce] font-semibold text-xs sm:text-sm md:text-base tracking-wider bg-[#1C9BF0] px-2 md:px-4 py-0.5 md:py-1 rounded-full"
+                  >
+                    Post
+                  </button>
                 </div>
               </div>
             </div>
           </div>
-
-          {tweets?.map((tweet) =>
-            tweet ? <FeedCard key={tweet?.id} data={tweet as Tweet} /> : null
-          )}
         </div>
-        <div className="col-span-8 p-5">
-          {!isLoading && !user && (
-            <div className="p-5 bg-slate-900 rounded-lg">
-              <p className="text-lg font-bold mb-2">New to Bolt?</p>
-              <GoogleLogin onSuccess={handleLoginWithGoogle} />
-            </div>
-          )}
-          <div>{user?.email}</div>
-        </div>
-      </div>
+        {tweets?.map((tweet) =>
+          tweet ? <FeedCard key={tweet?.id} data={tweet as Tweet} /> : null
+        )}
+      </TwitterLayout>
     </div>
   );
 }
